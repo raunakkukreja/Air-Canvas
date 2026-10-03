@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Air Canvas 3D</title>
+<meta name="description" content="Draw in 2D and 3D with hand gestures in your browser. Webcam + MediaPipe hand tracking, nothing leaves your device.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☝️</text></svg>">
+<style>
+  :root { --bg: #0d0f14; --panel: #171a22; --line: #2a2f3a; --text: #e8eaf0; --muted: #9aa1b1; --accent: #ff4fd8; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, Segoe UI, sans-serif; overflow: hidden; }
+  #stage { position: fixed; inset: 0; margin: auto; width: 100vw; height: 100vh; object-fit: contain; display: block; }
+  video { display: none; }
+  #intro { position: fixed; inset: 0; overflow-y: auto; display: grid; place-items: center; padding: 24px 16px;
+    background: radial-gradient(circle at 30% 20%, #2a1240 0, var(--bg) 60%); z-index: 2; }
+  #intro[hidden] { display: none; }
+  .card { max-width: 760px; width: 100%; }
+  h1 { font-size: clamp(32px, 6vw, 52px); margin: 0 0 8px; letter-spacing: -0.02em; }
+  h1 span { color: var(--accent); }
+  .lead { color: var(--muted); margin: 0 0 24px; font-size: 17px; }
+  button { font: inherit; cursor: pointer; border: 0; border-radius: 10px; padding: 12px 22px;
+    background: var(--accent); color: #12001a; font-weight: 700; }
+  button:disabled { opacity: .6; cursor: wait; }
+  button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); font-weight: 500; }
+  #status { color: var(--muted); margin: 12px 0 28px; min-height: 1.5em; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px 20px; }
+  .g { display: flex; gap: 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .g b { font-size: 20px; width: 28px; flex: none; text-align: center; }
+  .g small { color: var(--muted); display: block; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 24px 0 6px; }
+  kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 6px; font-size: 13px; }
+  .foot { color: var(--muted); font-size: 13px; margin-top: 24px; }
+  .foot a { color: var(--text); }
+  #help { position: fixed; right: 12px; bottom: 12px; max-width: min(420px, calc(100vw - 24px)); max-height: 70vh;
+    overflow-y: auto; background: rgba(23, 26, 34, .92); border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px; z-index: 1; }
+  #help summary { cursor: pointer; color: var(--muted); }
+  #help .grid { grid-template-columns: 1fr; }
+  dialog { width: min(1100px, 95vw); height: min(720px, 90vh); padding: 0; border: 1px solid var(--line);
+    border-radius: 12px; background: var(--panel); color: var(--text); }
+  dialog::backdrop { background: rgba(0, 0, 0, .7); }
+  dialog[open] { display: flex; flex-direction: column; }
+  dialog iframe { flex: 1; border: 0; width: 100%; }
+  .bar { display: flex; gap: 8px; padding: 10px; flex-wrap: wrap; align-items: center; }
+  .bar span { color: var(--muted); margin-right: auto; }
+</style>
+</head>
+<body>
+<video id="video" playsinline muted></video>
+<canvas id="stage"></canvas>
+
+<template id="gestures">
+  <div class="grid">
+    <div class="g"><b>☝️</b><div>Index finger<small>Draw (or spray when spray is on)</small></div></div>
+    <div class="g"><b>🤟</b><div>Index + middle + ring<small>Erase</small></div></div>
+    <div class="g"><b>✌️</b><div>Two fingers, hold<small>Right hand: undo · Left hand: redo</small></div></div>
+    <div class="g"><b>🖐️</b><div>Open hand on toolbar<small>Pick a color · hover BRUSH for size</small></div></div>
+    <div class="g"><b>🎯</b><div>Middle finger only<small>Pick a color from the camera</small></div></div>
+    <div class="g"><b>🤙</b><div>Pinky only, hold<small>Toggle spray paint</small></div></div>
+    <div class="g"><b>🤘</b><div>Rock sign, hold<small>Toggle mirror symmetry (2D)</small></div></div>
+    <div class="g"><b>✊</b><div>Fist, hold<small>Switch 2D / 3D mode</small></div></div>
+    <div class="g"><b>👍</b><div>Thumbs up, hold<small>Save menu (PNG / 3D viewer)</small></div></div>
+    <div class="g"><b>👎</b><div>Thumbs down, hold<small>Clear the canvas</small></div></div>
+    <div class="g"><b>🖖</b><div>4 fingers, thumb tucked (3D)<small>Drag to rotate the scene</small></div></div>
+    <div class="g"><b>🤏</b><div>Pinch (3D)<small>Right hand zooms in · Left zooms out</small></div></div>
+  </div>
+  <h2>Keys</h2>
+  <p><kbd>G</kbd> glow ink &nbsp; <kbd>S</kbd> symmetry &nbsp; <kbd>F</kbd> freeze background &nbsp; <kbd>H</kbd> this help</p>
+</template>
+
+<section id="intro">
+  <div class="card">
+    <h1>Air Canvas <span>3D</span></h1>
+    <p class="lead">Paint in the air with your hands — in 2D over your camera feed, or in 3D space you can rotate,
+      orbit and export. Hand tracking runs entirely in your browser; no video leaves your device.</p>
+    <button id="start">Start camera</button>
+    <p id="status" role="status"></p>
+    <h2>Gestures</h2>
+    <div id="intro-gestures"></div>
+    <p class="foot">Works best with good lighting and one hand in frame, about an arm's length from the camera.</p>
+  </div>
+</section>
+
+<details id="help">
+  <summary>Gestures &amp; keys (H)</summary>
+  <div id="help-gestures"></div>
+</details>
+
+<dialog id="viewer">
+  <div class="bar">
+    <span>Drag to orbit · scroll to zoom</span>
+    <button id="dl-html" class="ghost">Download viewer (.html)</button>
+    <button id="dl-obj" class="ghost">Download model (.obj)</button>
+    <button id="viewer-close">Close</button>
+  </div>
+  <iframe id="viewer-frame" title="3D viewer"></iframe>
+</dialog>
+
+<script>
+  for (const id of ['intro-gestures', 'help-gestures'])
+    document.getElementById(id).append(document.getElementById('gestures').content.cloneNode(true));
+</script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
