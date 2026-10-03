@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+node_modules/
+.vercel/
+
+# files the apps write when you save
+graffiti_*.png
+air_canvas_3d_*.obj
+air_canvas_3d_*.html
