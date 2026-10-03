@@ -8,3 +8,5 @@ node_modules/
 graffiti_*.png
 air_canvas_3d_*.obj
 air_canvas_3d_*.html
+
+.env*
