@@ -63,6 +63,16 @@ def main():
     freeze_hold = 0
     pinch_prev_dist = None
     prev_erase_3d = {'Left': None, 'Right': None}
+    last_gesture = {}   # hand label -> gesture seen last frame
+
+    def end_stroke(label):
+        """Close the hand's open stroke so the next one doesn't join onto it."""
+        if mode == MODE_2D:
+            canvas2d.finish_stroke(label, glow_on)
+            canvas2d.clear_prev(label)
+        else:
+            scene3d.finish_stroke(label)
+            prev_erase_3d[label] = None
 
     save_feedback = 0
     save_feedback_text = ''
@@ -100,9 +110,19 @@ def main():
         active_redo = False
         menu_finger = None       # finger position for save menu overlay
 
+        # a hand that left the frame ends its stroke
+        for label in set(last_gesture) - {hd.label for hd in hands}:
+            end_stroke(label)
+            del last_gesture[label]
+
         for hd in hands:
             sx, sy = hd.sx, hd.sy
             g = hd.gesture
+
+            # any gesture change ends the current stroke (only draw/erase extend it)
+            if g != last_gesture.get(hd.label):
+                end_stroke(hd.label)
+            last_gesture[hd.label] = g
 
             # ── save menu mode — only track finger ────────
             if save_menu.active:
@@ -119,16 +139,10 @@ def main():
             # ── thumb gestures ────────────────────────────
             if g == 'thumb_down':
                 any_thumb_down = True
-                if mode == MODE_2D:
-                    canvas2d.current[hd.label] = []
-                    canvas2d.clear_prev(hd.label)
                 continue
 
             if g == 'thumb_up':
                 any_thumb_up = True
-                if mode == MODE_2D:
-                    canvas2d.current[hd.label] = []
-                    canvas2d.clear_prev(hd.label)
                 continue
 
             # ── fist → mode selector ──────────────────────
@@ -181,12 +195,6 @@ def main():
 
             # ── two-finger → undo / redo ──────────────────
             if g == 'two_finger':
-                # finish any in-progress stroke first
-                if mode == MODE_2D and canvas2d.current[hd.label]:
-                    canvas2d.finish_stroke(hd.label)
-                elif mode == MODE_3D:
-                    scene3d.finish_stroke(hd.label)
-
                 if hd.label == 'Right':
                     active_undo = True
                 else:
@@ -238,7 +246,7 @@ def main():
                         if scene3d._rot_anchor is None:
                             scene3d.start_rotate(sx, sy)
                         scene3d.update_rotate(sx, sy)
-                        put(frame, 'ROTATING 🔄', (sx - 40, sy - 30), .5, (0, 200, 200), 2)
+                        put(frame, 'ROTATING', (sx - 40, sy - 30), .5, (0, 200, 200), 2)
                         continue
                     else:
                         if g == 'rotate_3d':
@@ -254,10 +262,10 @@ def main():
                     if g == 'pinch':
                         if hd.label == 'Right':
                             scene3d.adjust_zoom(0.015)
-                            put(frame, 'ZOOM IN ⊕', (sx - 40, sy - 30), .5, (0, 200, 0), 2)
+                            put(frame, 'ZOOM IN +', (sx - 40, sy - 30), .5, (0, 200, 0), 2)
                         else:
                             scene3d.adjust_zoom(-0.015)
-                            put(frame, 'ZOOM OUT ⊖', (sx - 40, sy - 30), .5, (0, 0, 200), 2)
+                            put(frame, 'ZOOM OUT -', (sx - 40, sy - 30), .5, (0, 0, 200), 2)
                         continue
 
                 # draw in 3D (ONLY with 'draw' gesture - strict index only)
@@ -287,10 +295,7 @@ def main():
                     scene3d.erase_at(sx, sy, curr_z, prev_pos=prev_pos)
                     
                     prev_erase_3d[hd.label] = curr_pos
-                    put(frame, '3D ERASING ✂', (sx + 15, sy - 10), .4, (0, 0, 255), 1)
-                else:
-                    scene3d.finish_stroke(hd.label)
-                    prev_erase_3d[hd.label] = None
+                    put(frame, '3D ERASING', (sx + 15, sy - 10), .4, (0, 0, 255), 1)
 
                 continue
 
@@ -358,11 +363,6 @@ def main():
                     if p is not None:
                         canvas2d.draw_line(hd.label, p, (sx, sy), color, thick, glow_on)
                     canvas2d.set_prev(hd.label, (sx, sy))
-
-            else:
-                if g != 'two_finger':
-                    canvas2d.clear_prev(hd.label)
-                    canvas2d.finish_stroke(hd.label, glow_on)
 
         # ── thumb up → save menu ──────────────────────────
         if any_thumb_up and not save_menu.active:

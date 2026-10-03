@@ -125,7 +125,7 @@ class SaveMenu:
 
         if current_mode == MODE_3D:
             # 3D save options: BLACK HTML, WHITE HTML, and Cancel
-            labels = ['BLACK HTML', 'WHITE HTML', '✕']
+            labels = ['BLACK HTML', 'WHITE HTML', 'X']
             modes = ['black_html', 'white_html', 'cancel']
             bw, bh, gap = 200, 90, 20
             total_w = 3 * bw + 2 * gap
@@ -140,7 +140,7 @@ class SaveMenu:
                 })
         else:
             # 2D save options
-            labels = ['RAW', 'WHITE', 'WHITE BRICK', 'BRICK', '✕']
+            labels = ['RAW', 'WHITE', 'WHITE BRICK', 'BRICK', 'X']
             modes = ['raw', 'white', 'white_brick', 'brick', 'cancel']
             bw, bh, gap = 180, 90, 20
             total_w = 5 * bw + 4 * gap
