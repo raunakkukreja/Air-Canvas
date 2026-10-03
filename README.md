@@ -2,7 +2,7 @@
 
 Paint in the air with your hands. A webcam and real-time hand tracking turn finger gestures into brush strokes, either in 2D over the live camera feed or in a 3D space you can rotate, zoom, orbit and export as a 3D model.
 
-**[Live demo →](https://air-canvas.vercel.app)** · runs entirely in the browser, no video leaves your device
+**[Live demo →](https://air-canvas-3d.vercel.app)** · runs entirely in the browser, no video leaves your device
 
 ![Air Canvas start screen with the gesture guide](docs/samples/web_intro.png)
 
