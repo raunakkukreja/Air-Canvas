@@ -85,3 +85,7 @@ MediaPipe Hand Landmarker (WASM/GPU) · Canvas 2D · Three.js · vanilla JavaScr
 ## Credits
 
 Built as a team project by **Raunak Kukreja** and **Sreesh Srikanth**. The original desktop version lives at [sreesh07/AIR_CANVAS_3D](https://github.com/sreesh07/AIR_CANVAS_3D). Its history is preserved here, and the browser port builds on it.
+
+## License
+
+[MIT](LICENSE)
